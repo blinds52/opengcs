@@ -1,11 +1,13 @@
 package libtar2vhd
 
 import (
+	"bufio"
 	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/docker/docker/pkg/archive"
 	"github.com/sirupsen/logrus"
@@ -106,8 +108,28 @@ func VHD2Tar(in io.Reader, out io.Writer, options *Options) (int64, error) {
 // VHDX2Tar takes in a folder (can be mounted from an attached VHDX) and returns a tar stream
 // containing the contents of the folder. It also returns the size of the tar stream.
 func VHDX2Tar(mntPath string, out io.Writer, options *Options) (int64, error) {
-	// The actual files are located in <mnt_path>/upper
-	readerResult, err := archive.TarWithOptions(filepath.Join(mntPath, "upper"), options.TarOpts)
+	// If using overlay, the actual files are located in <mnt_path>/upper.
+	// Note `FROM SCRATCH` uses a regular ext4 mount.
+	pm, err := os.Open("/proc/mounts")
+	if err != nil {
+		return 0, err
+	}
+	defer pm.Close()
+	scanner := bufio.NewScanner(pm)
+	overlay := true
+	for scanner.Scan() {
+		if strings.Contains(scanner.Text(), mntPath) {
+			if !strings.Contains(scanner.Text(), "overlay") {
+				overlay = false
+			}
+			break
+		}
+	}
+	if overlay {
+		mntPath = filepath.Join(mntPath, "upper")
+	}
+
+	readerResult, err := archive.TarWithOptions(mntPath, options.TarOpts)
 	if err != nil {
 		return 0, err
 	}
