@@ -124,11 +124,15 @@ func VHDX2Tar(mntPath string, out io.Writer, options *Options) (int64, error) {
 		if strings.Contains(scanner.Text(), mntPath) {
 			logrus.Info("which contains the mount path")
 			if !strings.Contains(scanner.Text(), "overlay") {
-				logrus.Info("mount line does contain overlay, but still could be")
+				logrus.Info("mount line does not contain overlay, but still could be overlay - looking for 'upper'")
 				s, err := os.Stat(filepath.Join(mntPath, "upper"))
-				if os.IsNotExist(err) {
-					logrus.Info("'upper' does not exist, so definitely not overlay")
-					overlay = false
+				if err != nil {
+					if os.IsNotExist(err) {
+						logrus.Info("'upper' does not exist, so definitely not overlay")
+						overlay = false
+						break
+					}
+					return 0, nil
 				}
 				if !s.IsDir() {
 					logrus.Info("'upper' is not a directory, so not overlay")
