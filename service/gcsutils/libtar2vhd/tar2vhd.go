@@ -110,13 +110,11 @@ func VHD2Tar(in io.Reader, out io.Writer, options *Options) (int64, error) {
 func VHDX2Tar(mntPath string, out io.Writer, options *Options) (int64, error) {
 	// If using overlay, the actual files are located in <mnt_path>/upper.
 	// Note `FROM SCRATCH` uses a regular ext4 mount.
-
 	pm, err := os.Open("/proc/mounts")
 	if err != nil {
 		return 0, err
 	}
 	defer pm.Close()
-
 	scanner := bufio.NewScanner(pm)
 	overlay := true
 	for scanner.Scan() {
