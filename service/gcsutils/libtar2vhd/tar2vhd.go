@@ -110,23 +110,37 @@ func VHD2Tar(in io.Reader, out io.Writer, options *Options) (int64, error) {
 func VHDX2Tar(mntPath string, out io.Writer, options *Options) (int64, error) {
 	// If using overlay, the actual files are located in <mnt_path>/upper.
 	// Note `FROM SCRATCH` uses a regular ext4 mount.
+	logrus.Infof("VHDX2Tar on mount path %s", mntPath)
 	pm, err := os.Open("/proc/mounts")
 	if err != nil {
+		logrus.Errorf("failed to open /proc/mounts %s", err.Error())
 		return 0, err
 	}
 	defer pm.Close()
 	scanner := bufio.NewScanner(pm)
 	overlay := true
 	for scanner.Scan() {
+		logrus.Infof("scanning %s", scanner.Text())
 		if strings.Contains(scanner.Text(), mntPath) {
+			logrus.Info("which contains the mount path")
 			if !strings.Contains(scanner.Text(), "overlay") {
-				overlay = false
+				logrus.Info("mount line does contain overlay, but still could be")
+				s, err := os.Stat(filepath.Join(mntPath, "upper"))
+				if os.IsNotExist(err) {
+					logrus.Info("'upper' does not exist, so definitely not overlay")
+					overlay = false
+				}
+				if !s.IsDir() {
+					logrus.Info("'upper' is not a directory, so not overlay")
+					overlay = false
+				}
 			}
 			break
 		}
 	}
 	if overlay {
 		mntPath = filepath.Join(mntPath, "upper")
+		logrus.Infof("overlay so updated mount path to %s", mntPath)
 	}
 
 	readerResult, err := archive.TarWithOptions(mntPath, options.TarOpts)

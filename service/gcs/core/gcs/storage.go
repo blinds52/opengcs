@@ -367,9 +367,9 @@ func (c *gcsCore) mountLayers(index uint32, scratchMount *mountSpec, layers []*m
 	}
 	// Don't mount overlay if there are no layerpaths (eg FROM SCRATCH)
 	// Testing if this is actually needed. Don't think it is afterall. JJH
-	//	if len(layerPaths) == 0 {
-	//		return nil
-	//	}
+	if len(layerPaths) == 0 {
+		return nil
+	}
 	lowerdir := strings.Join(layerPaths, ":")
 	options := fmt.Sprintf("lowerdir=%s,upperdir=%s,workdir=%s", lowerdir, upperDir, workdirPath)
 	if err := c.OS.Mount("overlay", rootfsPath, "overlay", mountOptions, options); err != nil {
